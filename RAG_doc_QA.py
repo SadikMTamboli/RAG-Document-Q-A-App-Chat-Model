@@ -9,7 +9,7 @@ from langchain_community.vectorstores import FAISS
 from langchain_community.embeddings import OllamaEmbeddings
 from langchain_huggingface  import HuggingFaceEmbeddings
 from langchain_community.document_loaders import PyPDFDirectoryLoader
-
+from langchain_community.document_loaders import PyPDFLoader
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -31,6 +31,33 @@ prompt=ChatPromptTemplate.from_template(
 
 """
 )
+import tempfile
+@st.cache_data(show_spinner="Processing PDF...")
+def create_vectorstore_from_pdfs(uploaded_files):
+    
+    docs = []
+
+    try:
+        for uploaded_file in uploaded_files:
+                print(uploaded_file)
+                temppdf=f'./temp.pdf'
+                with open(temppdf,'wb') as file:
+                    file.write(uploaded_files.getvalue())
+                    file_name=uploaded_files.name 
+                    print('written')  
+                loader=PyPDFLoader(temppdf)
+                docs=loader.load()
+                docs.extend(docs)
+    except Exception as e_loader:
+                # Loading failed (corrupted / not a PDF / encrypted, etc.)
+                reason = f"Loading error: {e_loader}"
+                st.warning(f"⚠️ Skipping '{uploaded_file.name}': {reason}")
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+    split_docs = text_splitter.split_documents(docs)
+
+    embeddings = HuggingFaceEmbeddings()
+    vectorstore = FAISS.from_documents(split_docs, embeddings)
+    return vectorstore
 
 def create_vector_embedding():
     if "vectors" not in st.session_state:
@@ -41,31 +68,13 @@ def create_vector_embedding():
         st.session_state.final_documents=st.session_state.text_splitter.split_documents(st.session_state.docs[:50])
         st.session_state.vector=FAISS.from_documents(st.session_state.final_documents,st.session_state.embeddings)
     return 1
-st.title('RAG Document Q&A')
-user_prompt=st.text_input("Enter your query")
-
-# if st.button('Document Embedding'):
-#     create_vector_embedding()
-#     st.write("Vector database is ready")
-if create_vector_embedding():
-    
-    st.success("Vector database is ready")
 
 import time 
 
-# if user_prompt:
-#     documment_chain=create_stuff_documents_chain(llm,prompt)
-#     retriever=st.session_state.vector.as_retriever()
-#     retrieval_chain=create_retrieval_chain(retriever,documment_chain)
-
-#     start=time.process_time()
-    
-#     response=retrieval_chain.invoke({"input":user_prompt})
-#     print(f'Response time={time.process_time()-start}')
 
 def create_stuff_documents_chain(llm, prompt):
     """Simple replacement for LangChain's create_stuff_documents_chain"""
-    from langchain_core.documents import Document
+    # from langchain_core.documents import Document
 
     def run(docs, input_text):
         context = "\n\n".join(doc.page_content for doc in docs)
@@ -101,21 +110,31 @@ def create_retrieval_chain(retriever, qa_chain):
     """
     return RetrievalChain(retriever, qa_chain)
 
-if user_prompt:
+st.title('PDF RAG Document Q&A search')
+
+uploaded_files= st.file_uploader('choose pdf ',accept_multiple_files=False)
+
+if uploaded_files:
+    st.write("⏳ Loading document...")
+    st.session_state.vector=create_vectorstore_from_pdfs(uploaded_files)
+    st.success("Ready to go!")
     
-    documment_chain = create_stuff_documents_chain(llm, prompt)
-    retriever = st.session_state.vector.as_retriever()
-    retrieval_chain = create_retrieval_chain(retriever, documment_chain)
+    user_prompt=st.text_input("Enter your query")
+    if user_prompt:
+    
+        documment_chain = create_stuff_documents_chain(llm, prompt)
+        retriever = st.session_state.vector.as_retriever()
+        retrieval_chain = create_retrieval_chain(retriever, documment_chain)
 
-    start = time.process_time()
-    response = retrieval_chain.invoke({"input": user_prompt})
-    print(f"Response time = {time.process_time() - start:.2f}s")
-    print(type(response))
+        start = time.process_time()
+        response = retrieval_chain.invoke({"input": user_prompt})
+        print(f"Response time = {time.process_time() - start:.2f}s")
+        print(type(response))
 
-    st.write(response.content)
+        st.write(response.content)
 
-    with st.expander('document similarity'):
-        docs = retriever.invoke(user_prompt)
-        for i, doc in enumerate(docs):
-            st.write(doc.page_content)
-            st.write('--------------')
+        with st.expander('document similarity'):
+            docs = retriever.invoke(user_prompt)
+            for i, doc in enumerate(docs):
+                st.write(doc.page_content)
+                st.write('--------------')
