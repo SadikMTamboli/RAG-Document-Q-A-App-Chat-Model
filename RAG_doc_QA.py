@@ -1,4 +1,5 @@
 import os
+import vectorstore
 import streamlit as st
 from langchain_groq import ChatGroq
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -36,7 +37,13 @@ import tempfile
 def create_vectorstore_from_pdfs(uploaded_files):
     
     docs = []
+    progress = st.progress(0, "")
 
+    # for file in uploaded_files:
+    #     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+    #         tmp.write(file.read())
+    #         loader = PyPDFLoader(tmp.name)
+    #         docs.extend(loader.load())
     try:
         for uploaded_file in uploaded_files:
                 print(uploaded_file)
@@ -45,6 +52,8 @@ def create_vectorstore_from_pdfs(uploaded_files):
                     file.write(uploaded_files.getvalue())
                     file_name=uploaded_files.name 
                     print('written')  
+                progress.progress(10, "")
+
                 loader=PyPDFLoader(temppdf)
                 docs=loader.load()
                 docs.extend(docs)
@@ -52,11 +61,14 @@ def create_vectorstore_from_pdfs(uploaded_files):
                 # Loading failed (corrupted / not a PDF / encrypted, etc.)
                 reason = f"Loading error: {e_loader}"
                 st.warning(f"⚠️ Skipping '{uploaded_file.name}': {reason}")
+    progress.progress(40, "")
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
     split_docs = text_splitter.split_documents(docs)
-
+    progress.progress(70, "")
     embeddings = HuggingFaceEmbeddings()
+    progress.progress(85, "")
     vectorstore = FAISS.from_documents(split_docs, embeddings)
+    progress.progress(100, "✅ Completed!")
     return vectorstore
 
 def create_vector_embedding():
@@ -112,12 +124,16 @@ def create_retrieval_chain(retriever, qa_chain):
 
 st.title('PDF RAG Document Q&A search')
 
+# if create_vector_embedding():
+#     st.success("Vector database is ready")
 uploaded_files= st.file_uploader('choose pdf ',accept_multiple_files=False)
 
 if uploaded_files:
-    st.write("⏳ Loading document...")
-    st.session_state.vector=create_vectorstore_from_pdfs(uploaded_files)
-    st.success("Ready to go!")
+    st.success("Document uploaded")
+    # st.session_state.vector=create_vectorstore_from_pdfs(uploaded_files)
+    st.session_state.vector=vectorstore.create_fast_vectorstore(uploaded_files)
+
+    # st.success("Ready to go!")
     
     user_prompt=st.text_input("Enter your query")
     if user_prompt:
@@ -132,9 +148,3 @@ if uploaded_files:
         print(type(response))
 
         st.write(response.content)
-
-        with st.expander('document similarity'):
-            docs = retriever.invoke(user_prompt)
-            for i, doc in enumerate(docs):
-                st.write(doc.page_content)
-                st.write('--------------')
