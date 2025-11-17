@@ -16,4 +16,3 @@ uvicorn
 pyodbc
 langchain_groq
 langchain_chroma
-langchain-openai
