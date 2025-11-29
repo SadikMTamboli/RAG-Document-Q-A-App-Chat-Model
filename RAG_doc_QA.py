@@ -14,9 +14,23 @@ from langchain_community.document_loaders import PyPDFLoader
 from dotenv import load_dotenv
 load_dotenv()
 
-os.environ['GROQ_API_KEY']=os.getenv('GROQ_API_KEY')
+# os.environ['GROQ_API_KEY']=os.getenv('GROQ_API_KEY')
 
-groq_api_key=os.getenv('GROQ_API_KEY')
+# groq_api_key=os.getenv('GROQ_API_KEY')
+
+
+groq_api_key = None
+
+# Try Streamlit Secrets (Cloud / Local)
+if "GROQ_API_KEY" in st.secrets:
+    groq_api_key = st.secrets["GROQ_API_KEY"]
+# Fallback to local environment (optional)
+elif os.getenv("GROQ_API_KEY"):
+    groq_api_key = os.getenv("GROQ_API_KEY")
+
+if not groq_api_key:
+    st.error("GROQ_API_KEY is missing! Add it to secrets.toml or environment variables.")
+
 llm=ChatGroq(model="llama-3.1-8b-instant", groq_api_key=groq_api_key)
 
 prompt=ChatPromptTemplate.from_template(
@@ -148,3 +162,4 @@ if uploaded_files:
         print(type(response))
 
         st.write(response.content)
+
