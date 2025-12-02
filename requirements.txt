@@ -8,7 +8,6 @@ langchain-huggingface
 sentence-transformers
 faiss-cpu
 langchain-chroma
-langchain-ollama
 
 python-dotenv
 pymupdf==1.24.10
@@ -18,4 +17,5 @@ beautifulsoup4
 fastapi
 uvicorn
 pyodbc
+
 
