@@ -1,6 +1,6 @@
 streamlit
-langchain
-langchain-community
+langchain==0.2.10
+langchain-community==0.2.10
 langchain-text-splitters
 langchain-openai
 langchain-groq
@@ -17,5 +17,6 @@ beautifulsoup4
 fastapi
 uvicorn
 pyodbc
+
 
 
