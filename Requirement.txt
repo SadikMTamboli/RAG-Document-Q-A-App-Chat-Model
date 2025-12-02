@@ -18,3 +18,4 @@ langchain_groq
 langchain_chroma
 pymupdf
 
+
