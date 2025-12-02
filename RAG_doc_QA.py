@@ -1,5 +1,5 @@
 import os
-import vectorstore
+# import vectorstore
 import streamlit as st
 from langchain_groq import ChatGroq
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -18,6 +18,9 @@ load_dotenv()
 
 # groq_api_key=os.getenv('GROQ_API_KEY')
 
+# os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"]
+# groq_api_key = os.getenv("GROQ_API_KEY")
+
 
 groq_api_key = None
 
@@ -31,6 +34,7 @@ elif os.getenv("GROQ_API_KEY"):
 if not groq_api_key:
     st.error("GROQ_API_KEY is missing! Add it to secrets.toml or environment variables.")
 
+    
 llm=ChatGroq(model="llama-3.1-8b-instant", groq_api_key=groq_api_key)
 
 prompt=ChatPromptTemplate.from_template(
@@ -46,6 +50,74 @@ prompt=ChatPromptTemplate.from_template(
 
 """
 )
+
+#############################
+
+import fitz  # PyMuPDF
+import tempfile
+import streamlit as st
+from langchain_core.documents import Document
+
+from langchain_community.vectorstores import FAISS
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_community.embeddings import HuggingFaceEmbeddings
+
+@st.cache_data(show_spinner="Processing PDF...")
+def create_fast_vectorstore(uploaded_file):
+    if uploaded_file is None:
+        st.error("Upload a PDF")
+        return None
+
+    progress = st.progress(0, "Saving PDF...")
+
+    # 1️⃣ Save PDF temporarily
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+        tmp.write(uploaded_file.getvalue())
+        temp_path = tmp.name
+
+    # 2️⃣ Open using PyMuPDF (fastest)
+    pdf = fitz.open(temp_path)
+    total_pages = pdf.page_count
+
+    docs = []
+    progress.progress(5, f"Reading pages: 0 / {total_pages}")
+
+    # 3️⃣ Extract text super fast
+    for i in range(total_pages):
+        page = pdf.load_page(i)
+        text = page.get_text("text")
+
+        docs.append(Document(page_content=text, metadata={"page": i + 1})
+        )
+        
+        pct = int((i + 1) / total_pages * 60)  # use 60% for loading
+        progress.progress(pct, f"Reading pages: {i + 1} / {total_pages}")
+
+    pdf.close()
+
+    progress.progress(70, "Chunking text...")
+
+    # 4️⃣ Chunk using LangChain
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1500,
+        chunk_overlap=200
+    )
+    chunks = splitter.split_documents(docs)
+
+    progress.progress(85, "thinking...")
+
+    # 5️⃣ Embeddings + FAISS
+    embeddings = HuggingFaceEmbeddings()
+    vectorstore = FAISS.from_documents(chunks, embeddings)
+
+    progress.progress(100, "Completed!")
+
+    return vectorstore
+
+
+
+
+
 import tempfile
 @st.cache_data(show_spinner="Processing PDF...")
 def create_vectorstore_from_pdfs(uploaded_files):
@@ -85,6 +157,7 @@ def create_vectorstore_from_pdfs(uploaded_files):
     progress.progress(100, "✅ Completed!")
     return vectorstore
 
+@st.cache_data()
 def create_vector_embedding():
     if "vectors" not in st.session_state:
         st.session_state.embeddings=HuggingFaceEmbeddings()
@@ -136,33 +209,41 @@ def create_retrieval_chain(retriever, qa_chain):
     """
     return RetrievalChain(retriever, qa_chain)
 
-st.title('PDF RAG Document Q&A search')
-
+st.title('PDF.AI')
+st.sidebar.title('Select')
+opt=st.sidebar.radio('',['PDF','WEB'])
 # if create_vector_embedding():
 #     st.success("Vector database is ready")
-uploaded_files= st.file_uploader('choose pdf ',accept_multiple_files=False)
-
-if uploaded_files:
-    st.success("Document uploaded")
-    # st.session_state.vector=create_vectorstore_from_pdfs(uploaded_files)
-    st.session_state.vector=vectorstore.create_fast_vectorstore(uploaded_files)
-
-    # st.success("Ready to go!")
-    
-    user_prompt=st.text_input("Enter your query")
-    if user_prompt:
-    
-        documment_chain = create_stuff_documents_chain(llm, prompt)
-        retriever = st.session_state.vector.as_retriever()
-        retrieval_chain = create_retrieval_chain(retriever, documment_chain)
-
-        start = time.process_time()
-        response = retrieval_chain.invoke({"input": user_prompt})
-        print(f"Response time = {time.process_time() - start:.2f}s")
-        print(type(response))
-
-        st.write(response.content)
 
 
+if opt=='PDF':
+    uploaded_files= st.file_uploader('choose pdf ',accept_multiple_files=False)
 
+    if uploaded_files:
+        st.success("Document uploaded")
+        # st.session_state.vector=create_vectorstore_from_pdfs(uploaded_files)
+        st.session_state.vector=create_fast_vectorstore(uploaded_files)
 
+        # st.success("Ready to go!")
+        
+        user_prompt=st.text_input("Enter your query")
+        if user_prompt:
+        
+            documment_chain = create_stuff_documents_chain(llm, prompt)
+            retriever = st.session_state.vector.as_retriever()
+            retrieval_chain = create_retrieval_chain(retriever, documment_chain)
+
+            start = time.process_time()
+            response = retrieval_chain.invoke({"input": user_prompt})
+            print(f"Response time = {time.process_time() - start:.2f}s")
+            print(type(response))
+
+            st.write(response.content)
+
+            # with st.expander('document similarity'):
+            #     docs = retriever.invoke(user_prompt)
+            #     for i, doc in enumerate(docs):
+            #         st.write(doc.page_content)
+            #         st.write('--------------')
+elif opt=='WEB':
+     st.write('Coming soon')
