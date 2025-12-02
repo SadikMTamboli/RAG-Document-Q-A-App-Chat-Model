@@ -1,4 +1,5 @@
 import os
+import fitz
 import vectorstore
 import streamlit as st
 from langchain_groq import ChatGroq
@@ -162,4 +163,5 @@ if uploaded_files:
         print(type(response))
 
         st.write(response.content)
+
 
