@@ -11,10 +11,11 @@ langchain-chroma
 langchain-ollama
 
 python-dotenv
+pymupdf==1.24.10
 pypdf
-pymupdf
 beautifulsoup4
 
 fastapi
 uvicorn
 pyodbc
+
