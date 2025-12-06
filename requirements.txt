@@ -3,21 +3,19 @@ python-dotenv
 langchain==0.2.10
 langchain-community==0.2.10
 langchain-text-splitters
-langchain-openai
 langchain-groq
 langchain-huggingface
 sentence-transformers
 faiss-cpu
 langchain-chroma
-
 python-dotenv
 pymupdf==1.24.10
 pypdf
 beautifulsoup4
-
 fastapi
 uvicorn
 pyodbc
+
 
 
 
