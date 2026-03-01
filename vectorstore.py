@@ -15,20 +15,20 @@ def create_fast_vectorstore(uploaded_file):
 
     progress = st.progress(0, "Saving PDF...")
 
-    # 1️⃣ Save PDF temporarily
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+    
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:        #  Save PDF temporarily
         tmp.write(uploaded_file.getvalue())
         temp_path = tmp.name
 
-    # 2️⃣ Open using PyMuPDF (fastest)
+    #  Open using PyMuPDF (fastest)
     pdf = fitz.open(temp_path)
     total_pages = pdf.page_count
 
     docs = []
     progress.progress(5, f"Reading pages: 0 / {total_pages}")
 
-    # 3️⃣ Extract text super fast
-    for i in range(total_pages):
+   
+    for i in range(total_pages):             #  Extract text super fast
         page = pdf.load_page(i)
         text = page.get_text("text")
 
@@ -42,8 +42,8 @@ def create_fast_vectorstore(uploaded_file):
 
     progress.progress(70, "Chunking text...")
 
-    # 4️⃣ Chunk using LangChain
-    splitter = RecursiveCharacterTextSplitter(
+    splitter = RecursiveCharacterTextSplitter(                    # Chunk using LangChain
+
         chunk_size=1500,
         chunk_overlap=200
     )
@@ -51,11 +51,12 @@ def create_fast_vectorstore(uploaded_file):
 
     progress.progress(85, "thinking...")
 
-    # 5️⃣ Embeddings + FAISS
-    embeddings = HuggingFaceEmbeddings()
+    embeddings = HuggingFaceEmbeddings()                        #  Embeddings + FAISS
+
     vectorstore = FAISS.from_documents(chunks, embeddings)
 
     progress.progress(100, "Completed!")
 
     return vectorstore
+
 
