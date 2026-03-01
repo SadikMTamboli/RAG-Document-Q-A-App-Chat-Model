@@ -56,7 +56,6 @@ import fitz  # PyMuPDF
 import tempfile
 import streamlit as st
 from langchain_core.documents import Document
-
 from langchain_community.vectorstores import FAISS
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
@@ -246,5 +245,6 @@ if opt=='PDF':
             #         st.write('--------------')
 elif opt=='WEB':
      st.write('Coming soon')
+
 
 
