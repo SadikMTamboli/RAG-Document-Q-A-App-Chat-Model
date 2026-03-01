@@ -20,8 +20,8 @@ def create_fast_vectorstore(uploaded_file):
         tmp.write(uploaded_file.getvalue())
         temp_path = tmp.name
 
-    #  Open using PyMuPDF (fastest)
-    pdf = fitz.open(temp_path)
+    
+    pdf = fitz.open(temp_path)            #  Open using PyMuPDF (fastest)
     total_pages = pdf.page_count
 
     docs = []
@@ -58,5 +58,6 @@ def create_fast_vectorstore(uploaded_file):
     progress.progress(100, "Completed!")
 
     return vectorstore
+
 
 
