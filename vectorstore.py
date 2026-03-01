@@ -43,7 +43,6 @@ def create_fast_vectorstore(uploaded_file):
     progress.progress(70, "Chunking text...")
 
     splitter = RecursiveCharacterTextSplitter(                    # Chunk using LangChain
-
         chunk_size=1500,
         chunk_overlap=200
     )
@@ -52,12 +51,12 @@ def create_fast_vectorstore(uploaded_file):
     progress.progress(85, "thinking...")
 
     embeddings = HuggingFaceEmbeddings()                        #  Embeddings + FAISS
-
     vectorstore = FAISS.from_documents(chunks, embeddings)
 
     progress.progress(100, "Completed!")
 
     return vectorstore
+
 
 
 
